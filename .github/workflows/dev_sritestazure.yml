@@ -36,7 +36,7 @@ jobs:
         with:
           name: node-app
           path: ./dist
-          connection-string: ${{ secrets.VITE_GITHUB_ACTIONS }}
+          VITE_GITHUB_ACTIONS: ${{ secrets.VITE_GITHUB_ACTIONS }}
 
   deploy:
     runs-on: ubuntu-latest
