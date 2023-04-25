@@ -14,7 +14,7 @@ jobs:
     env:
       VITE_INTERNAL: true
       VITE_SRI_TEST: import.meta.env
-      VITE_GITHUB_ACTIONS: ${{ secrets.VITE_GITHUB_ACTIONS }}
+      VITE_GITHUB_ACTION: ${{ secrets.VITE_GITHUB_ACTIONS }}
     steps:
       - uses: actions/checkout@v2
 
