@@ -8,11 +8,13 @@ on:
     branches:
       - dev
   workflow_dispatch:
-
+env:
+  VITE_INTERNAL: true
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    env:
+      VITE_INTERNAL: true
     steps:
       - uses: actions/checkout@v2
 
