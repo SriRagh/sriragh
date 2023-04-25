@@ -58,5 +58,4 @@ jobs:
           app-name: "sriTestAzure"
           slot-name: "Production"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_DDC0002C90E84295975C91FD1102F188 }}
-          connection-string: ${{ secrets.VITE_GITHUB_ACTIONS }}
           package: ./dist
