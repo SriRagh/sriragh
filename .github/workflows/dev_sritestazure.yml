@@ -11,12 +11,14 @@ on:
 env:
   VITE_INTERNAL: true
   VITE_SRI_TEST: import.meta.env
+  VITE_GITHUB_ACTIONS: ${{ secrets.VITE_GITHUB_ACTIONS }}
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
       VITE_INTERNAL: true
       VITE_SRI_TEST: import.meta.env
+      VITE_GITHUB_ACTIONS: ${{ secrets.VITE_GITHUB_ACTIONS }}
     steps:
       - uses: actions/checkout@v2
 
@@ -36,7 +38,6 @@ jobs:
         with:
           name: node-app
           path: ./dist
-          VITE_GITHUB_ACTIONS: ${{ secrets.VITE_GITHUB_ACTIONS }}
 
   deploy:
     runs-on: ubuntu-latest
