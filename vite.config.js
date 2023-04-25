@@ -10,5 +10,13 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
-  }
+  },
+  define: {
+    "process.env": {
+      // replace these with your environment variable names
+      VITE_MY_VAR_1: JSON.stringify(process.env),
+      VITE_MY_VAR_2: JSON.stringify(process.env.VITE_SRI_TEST ),
+      // add more variables as needed
+    },
+  },
 })
