@@ -10,13 +10,13 @@ on:
   workflow_dispatch:
 env:
   VITE_INTERNAL: true
-  VITE_SRI_TEST:import.meta.env
+  VITE_SRI_TEST: import.meta.env
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
       VITE_INTERNAL: true
-      VITE_SRI_TEST:import.meta.env
+      VITE_SRI_TEST: import.meta.env
     steps:
       - uses: actions/checkout@v2
 
