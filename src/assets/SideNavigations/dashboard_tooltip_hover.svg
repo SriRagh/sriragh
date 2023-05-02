@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="106px" height="42px" viewBox="0 0 106 42" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Dashboard</title>
+    <g id="Side-panel-" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Hover/Dashboard" transform="translate(-122.000000, -145.000000)">
+            <g id="Business-location" transform="translate(85.000000, 122.000000)">
+                <g id="Dashboard" transform="translate(37.000000, 23.000000)">
+                    <g id="Group-15" transform="translate(32.000000, 0.000000)">
+                        <rect id="Rectangle" fill="#EFF3F6" x="0" y="0" width="42" height="42" rx="10"></rect>
+                        <g id="Group" transform="translate(9.000000, 9.000000)">
+                            <g id="Group-57" transform="translate(0.480000, 0.000000)">
+                                <rect id="Icon-Spacing" opacity="0.2" x="0" y="0" width="23.04" height="24" rx="5"></rect>
+                                <g id="laptop" transform="translate(0.960000, 4.000000)" stroke="#5C63AB" stroke-linecap="round" stroke-width="2">
+                                    <path d="M0,15 L21.12,15 M2.88,12 L18.24,12 C18.770208,12 19.2,11.5523 19.2,11 L19.2,1 C19.2,0.44772 18.770208,0 18.24,0 L2.88,0 C2.3498112,0 1.92,0.44772 1.92,1 L1.92,11 C1.92,11.5523 2.3498112,12 2.88,12 Z" id="Shape"></path>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                    <g id="Group-15-Copy" opacity="0.497827439" transform="translate(82.000000, 9.000000)">
+                        <rect id="Rectangle" fill="#EFF3F6" opacity="0.3" x="0" y="0" width="24" height="24" rx="6"></rect>
+                        <g id="Group-57" transform="translate(5.000000, 5.000000)">
+                            <rect id="Icon-Spacing" opacity="0.2" x="0" y="0" width="14" height="14" rx="5"></rect>
+                            <g id="laptop" transform="translate(0.583333, 2.333333)" stroke="#FFFFFF" stroke-linecap="round" stroke-width="2">
+                                <path d="M0,9.75 L12.8333333,9.75 M1.75,7 L11.0833333,7 C11.4055083,7 11.6666667,6.73884167 11.6666667,6.41666667 L11.6666667,0.583333333 C11.6666667,0.26117 11.4055083,0 11.0833333,0 L1.75,0 C1.42783667,0 1.16666667,0.26117 1.16666667,0.583333333 L1.16666667,6.41666667 C1.16666667,6.73884167 1.42783667,7 1.75,7 Z" id="Shape"></path>
+                            </g>
+                        </g>
+                    </g>
+                    <g id="Group-15-Copy-2" opacity="0.497827439" transform="translate(0.000000, 9.000000)">
+                        <rect id="Rectangle" fill="#EFF3F6" opacity="0.3" x="0" y="0" width="24" height="24" rx="6"></rect>
+                        <g id="Group-57" transform="translate(5.000000, 5.000000)">
+                            <rect id="Icon-Spacing" opacity="0.2" x="0" y="0" width="14" height="14" rx="5"></rect>
+                            <g id="laptop" transform="translate(0.583333, 2.333333)" stroke="#FFFFFF" stroke-linecap="round" stroke-width="2">
+                                <path d="M0,9.75 L12.8333333,9.75 M1.75,7 L11.0833333,7 C11.4055083,7 11.6666667,6.73884167 11.6666667,6.41666667 L11.6666667,0.583333333 C11.6666667,0.26117 11.4055083,0 11.0833333,0 L1.75,0 C1.42783667,0 1.16666667,0.26117 1.16666667,0.583333333 L1.16666667,6.41666667 C1.16666667,6.73884167 1.42783667,7 1.75,7 Z" id="Shape"></path>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
