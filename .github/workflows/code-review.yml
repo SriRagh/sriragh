@@ -1,0 +1,81 @@
+name: Private Code Review Bot
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+      - master
+      - develop
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Run Code Review Bot
+        id: review
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: npm run code-review
+
+      - name: Upload Dashboard
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-review-dashboard
+          path: code-review-dashboard.html
+          retention-days: 30
+
+      - name: Comment PR with Results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const dashboardExists = fs.existsSync('code-review-dashboard.html');
+            
+            if (dashboardExists) {
+              const dashboard = fs.readFileSync('code-review-dashboard.html', 'utf8');
+              const criticalMatch = dashboard.match(/<div class="value">(\d+)<\/div>/g);
+              
+              let message = '## 🛡️ Code Review Results\n\n';
+              message += '✅ Code review completed. ';
+              message += 'Download the [detailed dashboard](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) from artifacts.\n\n';
+              
+              if (criticalMatch) {
+                message += '**Note:** Issues were found. Please review the dashboard for details.';
+              }
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: message
+              });
+            }
+
+      - name: Fail if critical issues found
+        if: steps.review.outcome == 'failure'
+        run: exit 1
