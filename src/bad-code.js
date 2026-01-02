@@ -1,30 +1,26 @@
 import React from 'react';
 
-// TODO: Refactor this component
 function BadComponent(props) {
-    const hardcodedIp = "192.168.1.1";
+    const hardcodedIp = process.env.REACT_APP_API_IP || "localhost";
 
-    // Magic number usage
+    const TIMEOUT_MS = 5000;
     setTimeout(() => {
-        console.log("Timer done");
-    }, 5000);
+        // Timer logic
+    }, TIMEOUT_MS);
 
     const data = [1, 2, 3];
 
     return (
-        <div
-            style={{ color: 'red', margin: '20px' }} // Inline style
-            dangerouslySetInnerHTML={{ __html: "<b>Unsafe Content</b>" }} // XSS Risk
-        >
-            <img src="logo.png" /> {/* Missing Alt */}
+        <div className="container">
+            <b>Safe Content</b>
 
-            {data.map((item, index) => (
-                <div key={index}>{item}</div> // Unsafe Key Index
+            <img src="logo.png" alt="Company Logo" />
+
+            {data.map((item) => (
+                <div key={item}>{item}</div>
             ))}
         </div>
     );
 }
 
 export default BadComponent;
-
-// Trigger CI

@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
+import https from 'https';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +29,40 @@ function loadEnv() {
     }
 }
 
+// HTTPS Request Helper (replaces fetch)
+function request(urlStr, options = {}, bodyData = null) {
+    return new Promise((resolve, reject) => {
+        const urlObj = new URL(urlStr);
+        const reqOpts = {
+            hostname: urlObj.hostname,
+            path: urlObj.pathname + urlObj.search,
+            method: options.method || 'GET',
+            headers: options.headers || {}
+        };
+
+        const req = https.request(reqOpts, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                resolve({
+                    ok: res.statusCode >= 200 && res.statusCode < 300,
+                    status: res.statusCode,
+                    json: async () => {
+                        try { return JSON.parse(data || '{}'); } catch (e) { return {}; }
+                    }
+                });
+            });
+        });
+
+        req.on('error', (e) => reject(e));
+
+        if (bodyData) {
+            req.write(typeof bodyData === 'string' ? bodyData : JSON.stringify(bodyData));
+        }
+        req.end();
+    });
+}
+
 // Security & Quality Patterns
 const PATTERNS = [
     { id: 'XSS_RISK', regex: /dangerouslySetInnerHTML/g, message: 'Security Risk: usage of dangerouslySetInnerHTML.', severity: 'CRITICAL', type: 'SECURITY' },
@@ -45,7 +80,6 @@ async function scanFile(filePath) {
     const content = fs.readFileSync(filePath, 'utf8');
     const lines = content.split('\n');
     const issues = [];
-    const fileName = path.basename(filePath);
     const relativePath = path.relative(path.resolve(__dirname, '../../'), filePath).replace(/\\/g, '/');
 
     PATTERNS.forEach(pattern => {
@@ -54,12 +88,12 @@ async function scanFile(filePath) {
         while ((match = pattern.regex.exec(content)) !== null) {
             const lineIndex = content.substring(0, match.index).split('\n').length;
             issues.push({
-                file: relativePath, // Use relative path for GitHub API
+                file: relativePath,
                 line: lineIndex,
                 id: pattern.id,
                 message: pattern.message,
                 severity: pattern.severity,
-                snippet: lines[lineIndex - 1].trim()
+                snippet: lines[lineIndex - 1] ? lines[lineIndex - 1].trim() : ''
             });
         }
     });
@@ -71,12 +105,11 @@ async function scanFile(filePath) {
 async function postGitHubPRReview(token, owner, repo, prNumber, issues, commitSha) {
     if (issues.length === 0) return;
 
-    // Filter only critical/high/medium for comments to avoid spam
     const comments = issues
         .filter(i => ['CRITICAL', 'HIGH', 'MEDIUM'].includes(i.severity))
         .map(i => ({
             path: i.file,
-            line: i.line,
+            line: i.line, // Ensure this line exists in diff, otherwise inline comment fails
             body: `**${i.severity}**: ${i.message}\n\`${i.snippet}\``
         }));
 
@@ -99,11 +132,10 @@ async function postGitHubPRReview(token, owner, repo, prNumber, issues, commitSh
             comments: comments
         };
 
-        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
+        const response = await request(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
             method: 'POST',
-            headers,
-            body: JSON.stringify(body)
-        });
+            headers
+        }, body);
 
         if (response.ok) {
             console.log('✅ Review successfully posted.');
@@ -111,7 +143,7 @@ async function postGitHubPRReview(token, owner, repo, prNumber, issues, commitSh
             const err = await response.json();
             console.error('❌ Failed to post inline review:', JSON.stringify(err, null, 2));
 
-            // Fallback: Post as a general comment if inline comments fail (e.g., lines not in diff)
+            // Fallback: Post as a general comment
             console.log("⚠️ Falling back to general review comment...");
 
             const summary = comments.map(c => `- **${c.path}:${c.line}**\n${c.body}`).join('\n\n');
@@ -121,11 +153,10 @@ async function postGitHubPRReview(token, owner, repo, prNumber, issues, commitSh
                 event: "REQUEST_CHANGES"
             };
 
-            const fallbackResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
+            const fallbackResponse = await request(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
                 method: 'POST',
-                headers,
-                body: JSON.stringify(fallbackBody)
-            });
+                headers
+            }, fallbackBody);
 
             if (fallbackResponse.ok) {
                 console.log('✅ Fallback review posted successfully.');
@@ -147,7 +178,6 @@ async function postGitHubStatus(state, description) {
     if (!token || !sha) return;
 
     let [owner, repo] = repoPathRaw.split('/');
-    // Handle cases where GITHUB_REPO includes 'github.com' or .git
     if (repoPathRaw.includes('github.com')) {
         const parts = repoPathRaw.split('github.com/')[1].split('/');
         owner = parts[0];
@@ -156,18 +186,17 @@ async function postGitHubStatus(state, description) {
 
     console.log(`📡 Setting Status to [${state}]: ${description}`);
     try {
-        await fetch(`https://api.github.com/repos/${owner}/${repo}/statuses/${sha}`, {
+        await request(`https://api.github.com/repos/${owner}/${repo}/statuses/${sha}`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/vnd.github.v3+json',
                 'User-Agent': 'Code-Review-Bot'
-            },
-            body: JSON.stringify({
-                state, description, context: 'Private Code Review Bot'
-            })
+            }
+        }, {
+            state, description, context: 'Private Code Review Bot'
         });
-    } catch (e) { /* Ignore */ }
+    } catch (e) { console.error('Error posting status', e); }
 }
 
 async function run() {
@@ -177,7 +206,6 @@ async function run() {
     const rootDir = path.resolve(__dirname, '../../src');
     const files = [];
 
-    // Recursive Walk
     function walk(dir) {
         if (IGNORE_DIRECTORIES.some(d => dir.includes(d))) return;
         try {
@@ -195,11 +223,15 @@ async function run() {
         allIssues.push(...await scanFile(f));
     }
 
-    // Generate Dashboard (Simplified)
-    const html = `<html><body><h1>Issues Found: ${allIssues.length}</h1></body></html>`;
+    // Generate Dashboard
+    const html = `<html><body>
+    <div class="summary">
+        <div class="card"><div class="label">Total Issues</div><div class="value">${allIssues.length}</div></div>
+    </div>
+    </body></html>`;
     fs.writeFileSync(path.resolve(__dirname, '../../', OUTPUT_HTML), html);
 
-    // Logic for GitHub Posting
+    // GitHub Posting
     const token = process.env.GITHUB_TOKEN;
     const prNum = process.env.PR_NUMBER;
     const sha = process.env.GITHUB_SHA;
