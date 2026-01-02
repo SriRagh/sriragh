@@ -76,12 +76,63 @@ const PATTERNS = [
     { id: 'UNSAFE_KEY', regex: /key=\{index\}/g, message: 'Performance: Array index as key is unsafe.', severity: 'MEDIUM', type: 'REACT_PERF' }
 ];
 
+
+// AI Analysis Helper
+async function analyzeWithGemini(content, fileName) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return [];
+
+    const prompt = `
+    You are a senior software engineer conducting a code review. Analyze the following code for:
+    1. Security Vulnerabilities (Critical)
+    2. Logic Errors (High)
+    3. Performance Issues (Medium)
+    4. Code Quality/Best Practices (Low)
+
+    File: ${fileName}
+
+    Return ONLY a JSON array of objects with this format (no markdown, just raw JSON):
+    [
+        { "file": "${fileName}", "line": <line_number>, "severity": "CRITICAL|HIGH|MEDIUM|LOW", "message": "<concise_description>", "snippet": "<code_snippet>" }
+    ]
+
+    If no issues, return [].
+
+    Code:
+    ${content}
+    `;
+
+    try {
+        const response = await request(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        }, {
+            contents: [{ parts: [{ text: prompt }] }]
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+            // Clean markdown if present
+            const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            return JSON.parse(cleanText);
+        } else {
+            console.error('AI Request Failed:', response.status);
+            return [];
+        }
+    } catch (e) {
+        console.error('AI Analysis Error:', e);
+        return [];
+    }
+}
+
 async function scanFile(filePath) {
     const content = fs.readFileSync(filePath, 'utf8');
-    const lines = content.split('\n');
-    const issues = [];
     const relativePath = path.relative(path.resolve(__dirname, '../../'), filePath).replace(/\\/g, '/');
+    let issues = [];
 
+    // 1. Static Regex Analysis (Fast & Reliable baseline)
+    const lines = content.split('\n');
     PATTERNS.forEach(pattern => {
         let match;
         pattern.regex.lastIndex = 0;
@@ -97,6 +148,15 @@ async function scanFile(filePath) {
             });
         }
     });
+
+    // 2. AI Analysis (Dynamic & Deep)
+    if (process.env.GEMINI_API_KEY) {
+        console.log(`🤖 Analyzing ${relativePath} with Gemini AI...`);
+        const aiIssues = await analyzeWithGemini(content, relativePath);
+        issues = [...issues, ...aiIssues];
+    } else {
+        console.log(`ℹ️ Skipping AI analysis for ${relativePath} (No API Key)`);
+    }
 
     return issues;
 }
