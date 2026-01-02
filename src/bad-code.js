@@ -1,24 +1,22 @@
 import React from 'react';
 
 function BadComponent(props) {
-    const hardcodedIp = process.env.REACT_APP_API_IP || "localhost";
+    // Hardcoded IP - Security Risk
+    const apiUrl = "http://192.168.0.1/api";
 
-    const TIMEOUT_MS = 5000;
-    setTimeout(() => {
-        // Timer logic
-    }, TIMEOUT_MS);
+    // Console log - Quality Issue
+    console.log("Rendering component");
 
-    const data = [1, 2, 3];
+    // Magic Number
+    setTimeout(() => { }, 5000);
 
     return (
         <div className="container">
-            <b>Safe Content</b>
+            {/* Dangerously Set Inner HTML - XSS Risk */}
+            <div dangerouslySetInnerHTML={{ __html: "<script>alert('xss')</script>" }} />
 
-            <img src="logo.png" alt="Company Logo" />
-
-            {data.map((item) => (
-                <div key={item}>{item}</div>
-            ))}
+            {/* Inline Style */}
+            <div style={{ color: 'red' }}>Error</div>
         </div>
     );
 }
