@@ -26,3 +26,5 @@ function BadComponent(props) {
 }
 
 export default BadComponent;
+
+// Trigger CI
