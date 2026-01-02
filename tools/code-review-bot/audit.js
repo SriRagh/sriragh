@@ -84,9 +84,12 @@ async function postGitHubPRReview(token, owner, repo, prNumber, issues, commitSh
 
     console.log(`📡 Posting ${comments.length} inline comments to PR #${prNumber}...`);
 
-    // We start a REVIEW with comments
-    // Note: 'line' requires the file to be part of the diff. If the file wasn't changed, this might error.
-    // robust bot would check the diff first. For this POC, we try-catch.
+    const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'Code-Review-Bot',
+        'Content-Type': 'application/json'
+    };
 
     try {
         const body = {
@@ -98,12 +101,7 @@ async function postGitHubPRReview(token, owner, repo, prNumber, issues, commitSh
 
         const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'User-Agent': 'Code-Review-Bot',
-                'Content-Type': 'application/json'
-            },
+            headers,
             body: JSON.stringify(body)
         });
 
@@ -111,7 +109,30 @@ async function postGitHubPRReview(token, owner, repo, prNumber, issues, commitSh
             console.log('✅ Review successfully posted.');
         } else {
             const err = await response.json();
-            console.error('❌ Failed to post review:', JSON.stringify(err, null, 2));
+            console.error('❌ Failed to post inline review:', JSON.stringify(err, null, 2));
+
+            // Fallback: Post as a general comment if inline comments fail (e.g., lines not in diff)
+            console.log("⚠️ Falling back to general review comment...");
+
+            const summary = comments.map(c => `- **${c.path}:${c.line}**\n${c.body}`).join('\n\n');
+            const fallbackBody = {
+                commit_id: commitSha,
+                body: `🛡️ Automated Code Review found issues (General Fallback):\n\n${summary}`,
+                event: "REQUEST_CHANGES"
+            };
+
+            const fallbackResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(fallbackBody)
+            });
+
+            if (fallbackResponse.ok) {
+                console.log('✅ Fallback review posted successfully.');
+            } else {
+                const fallbackErr = await fallbackResponse.json();
+                console.error('❌ Failed to post fallback review:', JSON.stringify(fallbackErr, null, 2));
+            }
         }
     } catch (e) {
         console.error('❌ Error posting review:', e);
