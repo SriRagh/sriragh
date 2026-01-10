@@ -1,0 +1,32 @@
+{
+  "conf": {
+    "src": "/conf.jpg"
+  },
+  "vayu": {
+    "src": "/vayu.png"
+  },
+  "prithvi": {
+    "src": "/prithvi.png"
+  },
+  "jal": {
+    "src": "/jal.png"
+  },
+  "akash": {
+    "src": "/akash.png"
+  },
+  "haleakala": {
+    "src": "/haleakala.png"
+  },
+  "pali": {
+    "src": "/pali.png"
+  },
+  "napali-coast": {
+    "src": "/napali-coast.png"
+  },
+  "hanalei": {
+    "src": "/hanalei.png"
+  },
+  "kilauea": {
+    "src": "/kilauea.png"
+  }
+}

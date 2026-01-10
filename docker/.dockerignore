@@ -1,0 +1,28 @@
+# Ignore VCS
+.git
+.gitignore
+
+# IDE files
+.idea
+*.iml
+
+# Build artifacts
+target
+build
+out
+dist
+
+# Gradle / Maven caches
+.gradle
+/.mvn
+
+# Node modules (if present)
+node_modules
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini

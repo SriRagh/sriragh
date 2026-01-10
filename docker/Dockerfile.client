@@ -1,0 +1,19 @@
+# Use Node 22
+FROM node:22 AS client
+
+WORKDIR /app
+
+# Copy frontend code
+COPY client/ ./
+
+# Modern way to enable Yarn (Corepack handles versions)
+RUN corepack enable && yarn install --frozen-lockfile
+
+# Expose frontend port
+EXPOSE 9002
+
+# Build production assets
+RUN yarn build
+
+# Start Next.js
+CMD ["yarn", "start"]

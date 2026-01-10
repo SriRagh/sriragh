@@ -1,0 +1,21 @@
+version: '3.9'
+services:
+  oracledb:
+    image: gvenzl/oracle-xe:21.3.0
+    restart: "no"
+    container_name: "inv_oracle"
+    ports:
+      - 1521:1521
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    environment:
+      ORACLE_PASSWORD: Innovan@123
+      ORACLE_DATABASE: REC_LOCAL
+      APP_USER: innovan_user
+      APP_USER_PASSWORD: Innovan@123
+    volumes:
+      - ./oracle_init.sh:/container-entrypoint-initdb.d/oracle_init.sh:ro
+      - ./reseed.sh:/reseed.sh:ro
+      - ../database:/database

@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  mongodb:
+    image: mongo:5.0.5
+    restart: "no"
+    container_name: inv_mongodb
+    ports:
+      - "27019:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: innovanRec
+      MONGO_INITDB_ROOT_PASSWORD: mongodb
+      MONGODB_USERNAME: rec
+      MONGODB_PASSWORD: mongodb
+      MONGO_INITDB_DATABASE: bes
+    volumes:
+      - ../database/init-mongodb:/docker-entrypoint-initdb.d
+      - ../database/init-mongodb/data:/tmp/data

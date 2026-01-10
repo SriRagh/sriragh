@@ -1,0 +1,20 @@
+# ---- Stage 1: Build with Maven (Java 21) ----
+FROM maven:3.9.6-eclipse-temurin-21 AS build
+
+WORKDIR /workspace
+COPY server/pom.xml ./
+COPY server/mvnw ./
+COPY server/.mvn .mvn
+
+COPY backend/src ./src
+
+# ---- Stage 2: Run JAR on lightweight JRE ----
+FROM eclipse-temurin:21-jre
+
+WORKDIR /app
+COPY server/target/*.jar app.jar
+
+ENV SERVER_PORT=9022
+EXPOSE 9022
+
+ENTRYPOINT ["java", "-Dserver.port=${SERVER_PORT}", "-jar", "app.jar"]
