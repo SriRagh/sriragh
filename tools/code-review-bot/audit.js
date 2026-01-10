@@ -263,7 +263,10 @@ async function run() {
     loadEnv();
     await postGitHubStatus('pending', 'Scanning code...');
 
-    const rootDir = path.resolve(__dirname, '../../src');
+    const rootDirs = [
+        path.resolve(__dirname, '../../client/src'),
+        path.resolve(__dirname, '../../server/src')
+    ];
     const files = [];
 
     function walk(dir) {
@@ -276,7 +279,10 @@ async function run() {
             });
         } catch { }
     }
-    if (fs.existsSync(rootDir)) walk(rootDir);
+
+    rootDirs.forEach(dir => {
+        if (fs.existsSync(dir)) walk(dir);
+    });
 
     let allIssues = [];
     for (const f of files) {

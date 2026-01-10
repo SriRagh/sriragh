@@ -1,0 +1,19 @@
+{
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "format": "pretty-quick --staged",
+    "format:all": "prettier --write \"**/*.java\"",
+    "format:single": "prettier --write"
+  },
+  "devDependencies": {
+    "husky": "^4.2.3",
+    "prettier-plugin-java": "^1.4.0",
+    "pretty-quick": "^2.0.1"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "pretty-quick --staged --pattern \"**/*.java\""
+    }
+  }
+}
