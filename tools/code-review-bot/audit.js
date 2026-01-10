@@ -65,22 +65,142 @@ function request(urlStr, options = {}, bodyData = null) {
 
 // Security & Quality Patterns
 const PATTERNS = [
-    { id: 'XSS_RISK', regex: /dangerouslySetInnerHTML/g, message: 'Security Risk: usage of dangerouslySetInnerHTML.', severity: 'CRITICAL', type: 'SECURITY' },
-    { id: 'HARDCODED_IP', regex: /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, message: 'Security: Potential hardcoded IP address.', severity: 'HIGH', type: 'SECURITY' },
-    { id: 'EVAL_USAGE', regex: /\beval\s*\(/g, message: 'Security: Usage of eval() is unsafe.', severity: 'CRITICAL', type: 'SECURITY' },
-    { id: 'CONSOLE_LOG', regex: /console\.log\s*\(/g, message: 'Quality: Remove console.log in production.', severity: 'LOW', type: 'QUALITY' },
-    { id: 'TODO_LEFT', regex: /\/\/\s*TODO/gi, message: 'Quality: Unresolved TODO found.', severity: 'LOW', type: 'QUALITY' },
-    { id: 'INLINE_STYLE', regex: /style=\{\{/g, message: 'Quality: Avoid inline styles. Use a common styling file.', severity: 'LOW', type: 'QUALITY' },
-    { id: 'MAGIC_NUMBER', regex: /(?<![:.\d])(500|1000|5000)\b(?!px)/g, message: 'Quality: Magic number detected. Use constants.', severity: 'LOW', type: 'QUALITY' },
-    { id: 'MISSING_ALT', regex: /<img\s+(?![^>]*alt=)[^>]*>/gi, message: 'Accessibility: Missing alt attribute.', severity: 'MEDIUM', type: 'ACCESSIBILITY' },
-    { id: 'UNSAFE_KEY', regex: /key=\{index\}/g, message: 'Performance: Array index as key is unsafe.', severity: 'MEDIUM', type: 'REACT_PERF' },
-    { id: 'PX_USAGE', regex: /\d+px/g, message: 'Styling: Use rem instead of px for accessibility.', severity: 'LOW', type: 'STYLE' },
+    {
+        id: 'XSS_RISK',
+        regex: /dangerouslySetInnerHTML/g,
+        message: 'Security Risk: usage of dangerouslySetInnerHTML.',
+        severity: 'CRITICAL',
+        type: 'SECURITY',
+        rationale: 'Using dangerouslySetInnerHTML bypasses Reacts built-in XSS protection and can allow attackers to execute arbitrary scripts in the users browser.',
+        fix: 'Use standard React components or DOMPurify to sanitize HTML before rendering. Avoid direct injection if possible.'
+    },
+    {
+        id: 'HARDCODED_IP',
+        regex: /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g,
+        message: 'Security: Potential hardcoded IP address.',
+        severity: 'HIGH',
+        type: 'SECURITY',
+        rationale: 'Hardcoded IP addresses make the application rigid and difficult to deploy across different environments (Dev, QA, Prod).',
+        fix: 'Move the IP address to a configuration file or environment variable (e.g., .env or application.properties).'
+    },
+    {
+        id: 'EVAL_USAGE',
+        regex: /\beval\s*\(/g,
+        message: 'Security: Usage of eval() is unsafe.',
+        severity: 'CRITICAL',
+        type: 'SECURITY',
+        rationale: 'eval() executes strings as code, opening a massive security hole for script injection and making code optimization impossible for the engine.',
+        fix: 'Refactor code to use JSON.parse() for data or use dynamic property access (obj[key]) instead of evaluating strings.'
+    },
+    {
+        id: 'CONSOLE_LOG',
+        regex: /console\.log\s*\(/g,
+        message: 'Quality: Remove console.log in production.',
+        severity: 'LOW',
+        type: 'QUALITY',
+        rationale: 'Console logs can leak sensitive application state/data to users and can slightly degrade performance in high-frequency loops.',
+        fix: 'Replace console.log with a proper logging library (e.g., Winston, Pino) or remove it before committing.'
+    },
+    {
+        id: 'TODO_LEFT',
+        regex: /\/\/\s*TODO/gi,
+        message: 'Quality: Unresolved TODO found.',
+        severity: 'LOW',
+        type: 'QUALITY',
+        rationale: 'Unresolved TODOs often represent technical debt or forgotten edge cases that can lead to bugs later.',
+        fix: 'Address the task described in the TODO or track it in a formal issue management system (Jira/GitHub Issues).'
+    },
+    {
+        id: 'INLINE_STYLE',
+        regex: /style=\{\{/g,
+        message: 'Quality: Avoid inline styles. Use a common styling file.',
+        severity: 'LOW',
+        type: 'QUALITY',
+        rationale: 'Inline styles have higher specificity and are harder to override, leading to maintenance difficulties and bloated JSX.',
+        fix: 'Move styles to a CSS module, Tailwind classes, or a separate .css file.'
+    },
+    {
+        id: 'MAGIC_NUMBER',
+        regex: /(?<![:.\d])(500|1000|5000)\b(?!px)/g,
+        message: 'Quality: Magic number detected. Use constants.',
+        severity: 'LOW',
+        type: 'QUALITY',
+        rationale: 'Magic numbers lack context, making it unclear what the value represents and making global changes error-prone.',
+        fix: 'Define a named constant (e.g., const TIMEOUT_MS = 1000) and use it instead of the raw number.'
+    },
+    {
+        id: 'MISSING_ALT',
+        regex: /<img\s+(?![^>]*alt=)[^>]*>/gi,
+        message: 'Accessibility: Missing alt attribute.',
+        severity: 'MEDIUM',
+        type: 'ACCESSIBILITY',
+        rationale: 'Missing alt text prevents screen readers from describing images to visually impaired users, violating accessibility standards (WCAG).',
+        fix: 'Add a descriptive alt="..." attribute to the <img> tag, or alt="" if the image is purely decorative.'
+    },
+    {
+        id: 'UNSAFE_KEY',
+        regex: /key=\{index\}/g,
+        message: 'Performance: Array index as key is unsafe.',
+        severity: 'MEDIUM',
+        type: 'REACT_PERF',
+        rationale: 'Using array indices as keys can cause bugs in component state and performance issues during list reordering/filtering.',
+        fix: 'Use a unique identifier from your data (e.g., item.id) as the key prop.'
+    },
+    {
+        id: 'PX_USAGE',
+        regex: /\d+px/g,
+        message: 'Styling: Use rem instead of px for accessibility.',
+        severity: 'LOW',
+        type: 'STYLE',
+        rationale: 'Fixed px values do not scale with the users browser font size settings, hindering accessibility for partially sighted users.',
+        fix: 'Convert px values to rem (16px = 1rem). Use a tool or calculations to ensure responsive typography.'
+    },
     // Java Patterns
-    { id: 'JAVA_PRINT', regex: /System\.out\.println/g, message: 'Quality: Remove System.out.println in production.', severity: 'LOW', type: 'QUALITY' },
-    { id: 'JAVA_RAW_OBJ', regex: /List<Object\[\]>/g, message: 'High: Fragile data mapping using List<Object[]>. Use a DTO projection instead.', severity: 'HIGH', type: 'QUALITY' },
-    { id: 'JAVA_HARDCODED_ADMIN', regex: /Permission\.ADMIN\.toString\(\)/g, message: 'Security: Potential hardcoded ADMIN permission.', severity: 'HIGH', type: 'SECURITY' },
-    { id: 'JAVA_NATIVE_QUERY', regex: /nativeQuery\s*=\s*true/g, message: 'Quality: Native queries bypass JPA safeguards. Verify strict necessity.', severity: 'MEDIUM', type: 'QUALITY' },
-    { id: 'JAVA_GENERIC_EX', regex: /catch\s*\(Exception\s/g, message: 'Best Practice: Avoid catching generic Exception. Catch specific exceptions.', severity: 'LOW', type: 'QUALITY' }
+    {
+        id: 'JAVA_PRINT',
+        regex: /System\.out\.println/g,
+        message: 'Quality: Remove System.out.println in production.',
+        severity: 'LOW',
+        type: 'QUALITY',
+        rationale: 'System.out results in poorly managed logs that are difficult to categorize, search, or redirect to external logging systems.',
+        fix: 'Use a logger (e.g., log.info() or logger.debug()) from slf4j or Logback.'
+    },
+    {
+        id: 'JAVA_RAW_OBJ',
+        regex: /List<Object\[\]>/g,
+        message: 'High: Fragile data mapping using List<Object[]>.',
+        severity: 'HIGH',
+        type: 'QUALITY',
+        rationale: 'Returning raw Objects array is type-unsafe and extremely fragile. Any change in SQL column order will break the application logic silently.',
+        fix: 'Create a DTO class or use an Interface-based projection in your JPA repository for type-safe mapping.'
+    },
+    {
+        id: 'JAVA_HARDCODED_ADMIN',
+        regex: /Permission\.ADMIN\.toString\(\)/g,
+        message: 'Security: Potential hardcoded ADMIN permission.',
+        severity: 'HIGH',
+        type: 'SECURITY',
+        rationale: 'Hardcoding "ADMIN" bypasses flexible RBAC (Role-Based Access Control) and makes it difficult to manage granular permissions.',
+        fix: 'Check for specific authorities mapped in the database or use Spring Security annotations like @PreAuthorize("hasRole(\'ADMIN\')").'
+    },
+    {
+        id: 'JAVA_NATIVE_QUERY',
+        regex: /nativeQuery\s*=\s*true/g,
+        message: 'Quality: Native queries bypass JPA safeguards.',
+        severity: 'MEDIUM',
+        type: 'QUALITY',
+        rationale: 'Native queries are database-dependent and bypass JPA optimizations like caching and dirty checking.',
+        fix: 'Attempt to rewrite the query in JPQL/HQL. Only use native queries for complex, DB-specific performance tuning.'
+    },
+    {
+        id: 'JAVA_GENERIC_EX',
+        regex: /catch\s*\(Exception\s/g,
+        message: 'Best Practice: Avoid catching generic Exception.',
+        severity: 'LOW',
+        type: 'QUALITY',
+        rationale: 'Catching the base Exception class can hide unexpected RuntimeExceptions or Errors, making debugging significantly harder.',
+        fix: 'Catch specific checked exceptions (e.g., SQLException, IOException) and handle them individually.'
+    }
 ];
 
 
@@ -177,8 +297,8 @@ async function scanFile(filePath) {
                 message: pattern.message,
                 severity: pattern.severity,
                 framework: framework,
-                rationale: "This violates common coding standards or project-specific rules.",
-                fix: "Correct the highlighted code following project guidelines.",
+                rationale: pattern.rationale,
+                fix: pattern.fix,
                 snippet: lines[lineIndex - 1] ? lines[lineIndex - 1].trim() : ''
             });
         }
