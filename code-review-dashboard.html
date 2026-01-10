@@ -1,5 +1,3031 @@
-<html><body>
-    <div class="summary">
-        <div class="card"><div class="label">Total Issues</div><div class="value">114</div></div>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sonar-Grade Code Review</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #4b5563;
+            --critical: #dc2626;
+            --high: #d97706;
+            --medium: #059669;
+            --low: #2563eb;
+            --primary: #4f46e5;
+            --border: #e5e7eb;
+            --snippet-bg: #1e293b;
+        }
+
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 40px 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        header { margin-bottom: 40px; }
+        h1 { font-weight: 800; font-size: 2.25rem; color: #111827; margin: 0; }
+        .subtitle { color: var(--text-muted); margin-top: 8px; font-size: 1.1rem; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .stat-box { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; }
+        .stat-num { font-size: 1.75rem; font-weight: 700; margin-bottom: 4px; }
+        .stat-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .controls { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; }
+        .filter-group { display: flex; flex-direction: column; gap: 8px; }
+        .filter-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+        .btn-stack { display: flex; gap: 8px; }
+        
+        .filter-btn { border: 1px solid var(--border); background: white; padding: 6px 14px; border-radius: 6px; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: 0.2s; }
+        .filter-btn:hover { background: #f9fafb; }
+        .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        #search { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); width: 100%; max-width: 300px; font-family: inherit; }
+
+        .issue-card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .issue-header { padding: 16px 20px; background: #fafafa; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        
+        .severity-badge { font-size: 0.7rem; font-weight: 800; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+        .sev-critical { background: #fee2e2; color: #991b1b; }
+        .sev-high { background: #ffedd5; color: #9a3412; }
+        .sev-medium { background: #dcfce7; color: #065f46; }
+        .sev-low { background: #e0e7ff; color: #3730a3; }
+        
+        .framework-badge { font-size: 0.7rem; font-weight: 700; background: #e2e8f0; color: #475569; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+        .issue-file { font-family: 'Fira Code', monospace; font-size: 0.8rem; color: var(--text-muted); }
+
+        .issue-main { padding: 20px; }
+        .issue-title { font-size: 1.25rem; font-weight: 700; color: #111827; margin-bottom: 16px; }
+
+        .sonar-section { margin-bottom: 20px; }
+        .section-label { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .section-label::before { content: ''; display: inline-block; width: 4px; height: 14px; background: var(--primary); border-radius: 2px; }
+        .section-content { font-size: 0.95rem; color: #374151; line-height: 1.6; }
+
+        .issue-snippet { background: var(--snippet-bg); padding: 20px; margin: 0; overflow-x: auto; font-family: 'Fira Code', monospace; font-size: 0.85rem; color: #e2e8f0; border-top: 1px solid #334155; }
+
+        @media (max-width: 768px) { .controls { flex-direction: column; align-items: stretch; } #search { max-width: none; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛡️ Sonar Code Architecture Insights</h1>
+            <p class="subtitle">Framework-agnostic Quality & Security Review Engine</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-box"> <div class="stat-num">111</div> <div class="stat-label">Total</div> </div>
+            <div class="stat-box" style="border-left: 4px solid var(--critical)"> <div class="stat-num">2</div> <div class="stat-label">Critical</div> </div>
+            <div class="stat-box" style="border-left: 4px solid var(--high)"> <div class="stat-num">7</div> <div class="stat-label">High</div> </div>
+            <div class="stat-box" style="border-left: 4px solid var(--primary)"> <div class="stat-num">18</div> <div class="stat-label">Java</div> </div>
+            <div class="stat-box" style="border-left: 4px solid #6366f1"> <div class="stat-num">93</div> <div class="stat-label">React</div> </div>
+        </div>
+
+        <div class="controls">
+            <div style="display: flex; gap: 24px;">
+                <div class="filter-group">
+                    <div class="filter-label">Severity</div>
+                    <div class="btn-stack" id="sev-filters">
+                        <button class="filter-btn active" onclick="setFilter('sev', 'ALL', this)">All</button>
+                        <button class="filter-btn" onclick="setFilter('sev', 'CRITICAL', this)">Critical</button>
+                        <button class="filter-btn" onclick="setFilter('sev', 'HIGH', this)">High</button>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <div class="filter-label">Framework</div>
+                    <div class="btn-stack" id="frame-filters">
+                        <button class="filter-btn active" onclick="setFilter('frame', 'ALL', this)">All</button>
+                        <button class="filter-btn" onclick="setFilter('frame', 'JAVA', this)">Java</button>
+                        <button class="filter-btn" onclick="setFilter('frame', 'REACT/FRONTEND', this)">React</button>
+                    </div>
+                </div>
+            </div>
+            <input type="text" id="search" placeholder="Search issues..." onkeyup="applyAllFilters()">
+        </div>
+
+        <div id="container">
+            
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/ai/flows/send-email-flow.ts:33</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Remove console.log in production.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>console.log(&quot;--- Sending Email ---&quot;);</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/ai/flows/send-email-flow.ts:34</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Remove console.log in production.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>console.log(`To: ${input.to}`);</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/ai/flows/send-email-flow.ts:35</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Remove console.log in production.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>console.log(`Subject: ${input.subject}`);</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/ai/flows/send-email-flow.ts:36</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Remove console.log in production.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>console.log(`Body: \n${input.body}`);</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/ai/flows/send-email-flow.ts:37</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Remove console.log in production.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>console.log(&quot;---------------------&quot;);</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/ai/flows/send-email-flow.ts:40</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>await new Promise((resolve) =&gt; setTimeout(resolve, 500));</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/about/page.tsx:26</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>style={{ animationDelay: &quot;0.3s&quot; }}</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/about/page.tsx:10</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;div className=&quot;relative h-[50vh] min-h-[400px] w-full&quot;&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/about/page.tsx:67</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>sizes=&quot;(max-width: 768px) 100vw, 50vw&quot;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/about/page.tsx:81</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>sizes=&quot;(max-width: 768px) 100vw, 50vw&quot;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/admin/page.tsx:309</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>icon={&lt;CheckCircle className=&quot;h-5 w-5 text-green-500&quot; /&gt;}</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/admin/page.tsx:315</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>icon={&lt;Wrench className=&quot;h-5 w-5 text-orange-500&quot; /&gt;}</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/admin/page.tsx:324</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>icon={&lt;UserCheck className=&quot;h-5 w-5 text-green-500&quot; /&gt;}</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/admin/page.tsx:330</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>icon={&lt;UserX className=&quot;h-5 w-5 text-red-500&quot; /&gt;}</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/admin/page.tsx:410</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>icon={&lt;Clock className=&quot;h-5 w-5 text-blue-500&quot; /&gt;}</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/admin/page.tsx:109</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>className=&quot;mx-auto aspect-square h-full w-full max-h-[300px]&quot;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/bookings/page.tsx:148</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>style={{ animationDelay: `${index * 100}ms`, animationFillMode: &quot;both&quot; }}</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/bookings/page.tsx:417</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>style={{ animationDelay: &quot;0.1s&quot;, animationFillMode: &quot;both&quot; }}</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/bookings/page.tsx:193</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;div className=&quot;flex items-center gap-2 rounded-md border border-dashed border-orange-500 bg-orange-50 dark:bg-orange-950 p-4&quot;&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/bookings/page.tsx:194</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;Wrench className=&quot;h-6 w-6 text-orange-500&quot; /&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/bookings/page.tsx:158</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>sizes=&quot;(max-width: 768px) 100vw, 33vw&quot;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/bookings/page.tsx:429</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;div className=&quot;relative w-full sm:w-[280px]&quot;&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/bookings/page.tsx:444</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;SelectTrigger className=&quot;w-full sm:w-[280px]&quot;&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/dashboard/page.tsx:199</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>style={{ animationDelay: &quot;0.1s&quot;, animationFillMode: &quot;both&quot; }}</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/dashboard/page.tsx:43</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>className: &quot;bg-blue-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/dashboard/page.tsx:233</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;Calendar className=&quot;h-5 w-5 text-blue-500&quot; /&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/dashboard/page.tsx:244</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;BookOpenCheck className=&quot;h-5 w-5 text-green-500&quot; /&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/layout.tsx:26</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;link href=&quot;https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap&quot; rel=&quot;stylesheet&quot; /&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/my-bookings/page.tsx:28</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>if (isOngoing) return { text: &#039;Ongoing&#039;, variant: &#039;destructive&#039; as const, className: &#039;bg-blue-500&#039; };</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/reset-password/page.tsx:52</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Remove console.log in production.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>console.log(</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/reset-password/page.tsx:58</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>await new Promise((resolve) =&gt; setTimeout(resolve, 1000));</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/rooms/page.tsx:216</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>style={{ animationDelay: &quot;0.1s&quot;, animationFillMode: &quot;both&quot; }}</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/rooms/page.tsx:224</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>style={{ animationDelay: &quot;0.2s&quot;, animationFillMode: &quot;both&quot; }}</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="MEDIUM" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-medium">MEDIUM</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/rooms/page.tsx:263</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Performance: Array index as key is unsafe.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;TableRow key={index}&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/rooms/page.tsx:249</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;TableHead className=&quot;w-[80px]&quot;&gt;Image&lt;/TableHead&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/rooms/page.tsx:296</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>sizes=&quot;64px&quot;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/users/page.tsx:308</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>style={{ animationDelay: &quot;0.2s&quot;, animationFillMode: &quot;both&quot; }}</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="MEDIUM" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-medium">MEDIUM</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/users/page.tsx:357</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Performance: Array index as key is unsafe.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;TableRow key={index}&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/app/users/page.tsx:335</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;TableHead className=&quot;p-4 w-[60px]&quot;&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/layout/app-provider.tsx:65</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;Skeleton className=&quot;h-4 w-[250px]&quot; /&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/layout/app-provider.tsx:66</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;Skeleton className=&quot;h-4 w-[200px]&quot; /&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/layout/app-provider.tsx:82</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;Skeleton className=&quot;h-4 w-[250px]&quot; /&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/layout/app-provider.tsx:83</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;Skeleton className=&quot;h-4 w-[200px]&quot; /&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/layout/app-provider.tsx:104</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;Skeleton className=&quot;h-4 w-[250px]&quot; /&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/layout/app-provider.tsx:105</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;Skeleton className=&quot;h-4 w-[200px]&quot; /&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/monthly-calendar-view.tsx:33</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Vayu: &quot;bg-red-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/monthly-calendar-view.tsx:34</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Prithvi: &quot;bg-blue-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/monthly-calendar-view.tsx:35</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Jal: &quot;bg-green-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/monthly-calendar-view.tsx:36</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Akash: &quot;bg-yellow-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/monthly-calendar-view.tsx:37</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Haleakala: &quot;bg-indigo-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/monthly-calendar-view.tsx:38</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Pali: &quot;bg-purple-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/monthly-calendar-view.tsx:39</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&quot;Napali Coast&quot;: &quot;bg-pink-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/monthly-calendar-view.tsx:40</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Hanalei: &quot;bg-orange-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/monthly-calendar-view.tsx:41</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Kilauea: &quot;bg-teal-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:79</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>style={{</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:125</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;div className=&quot;grid&quot; style={{ gridTemplateColumns: &quot;160px 1fr&quot; }}&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:154</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>style={{</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:178</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>style={{</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:200</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>style={{</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:22</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Vayu: &quot;bg-red-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:23</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Prithvi: &quot;bg-blue-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:24</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Jal: &quot;bg-green-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:25</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Akash: &quot;bg-yellow-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:26</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Haleakala: &quot;bg-indigo-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:27</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Pali: &quot;bg-purple-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:28</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&quot;Napali Coast&quot;: &quot;bg-pink-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:29</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Hanalei: &quot;bg-orange-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:30</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Kilauea: &quot;bg-teal-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:125</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&lt;div className=&quot;grid&quot; style={{ gridTemplateColumns: &quot;160px 1fr&quot; }}&gt;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:155</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>gridTemplateColumns: `repeat(${hours.length}, minmax(80px, 1fr))`,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:179</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>gridTemplateColumns: `repeat(${hours.length}, minmax(80px, 1fr))`,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/today-view.tsx:201</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>gridTemplateColumns: `repeat(${hours.length}, minmax(80px, 1fr))`,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/alert.tsx:7</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&quot;relative w-full rounded-lg border p-4 [&amp;&gt;svg~*]:pl-7 [&amp;&gt;svg+div]:translate-y-[-3px] [&amp;&gt;svg]:absolute [&amp;&gt;svg]:left-4 [&amp;&gt;svg]:top-4 [&amp;&gt;svg]:text-foreground&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="CRITICAL" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-critical">CRITICAL</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/chart.tsx:80</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Security Risk: usage of dangerouslySetInnerHTML.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>dangerouslySetInnerHTML={{</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/chart.tsx:303</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>style={{</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/chart.tsx:210</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&quot;shrink-0 rounded-[2px] border-[--color-border] bg-[--color-bg]&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/chart.tsx:214</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&quot;w-0 border-[1.5px] border-dashed bg-transparent&quot;:</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/chart.tsx:302</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>className=&quot;h-2 w-2 shrink-0 rounded-[2px]&quot;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/progress.tsx:22</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Avoid inline styles. Use a common styling file.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>style={{ transform: `translateX(-${100 - (value || 0)}%)` }}</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/scroll-area.tsx:36</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&quot;h-full w-2.5 border-l border-l-transparent p-[1px]&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/scroll-area.tsx:38</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&quot;h-2.5 flex-col border-t border-t-transparent p-[1px]&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/separator.tsx:22</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>orientation === &quot;horizontal&quot; ? &quot;h-[1px] w-full&quot; : &quot;h-full w-[1px]&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/separator.tsx:22</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>orientation === &quot;horizontal&quot; ? &quot;h-[1px] w-full&quot; : &quot;h-full w-[1px]&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/sheet.tsx:34</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&quot;fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/sidebar.tsx:237</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>? &quot;p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]&quot;</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/sidebar.tsx:297</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&quot;absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/sidebar.tsx:514</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&quot;bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/sidebar.tsx:514</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&quot;bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/textarea.tsx:10</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&#039;flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm&#039;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/ui/toast.tsx:20</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Styling: Use rem instead of px for accessibility.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>&quot;fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]&quot;,</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/components/update-booking-dialog.tsx:82</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>(booking.endTime.getTime() - booking.startTime.getTime()) / (1000 * 60)</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/context/auth-context.tsx:43</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>const IDLE_TIMEOUT = 10 * 60 * 1000; // 10 minutes</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="REACT/FRONTEND">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">REACT/FRONTEND</span>
+                    <span class="issue-file">client/src/context/booking-context.tsx:190</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Magic number detected. Use constants.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>}, 5 * 60 * 1000); // 5 minutes</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/auth/AuthHandler.java:137</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Best Practice: Avoid catching generic Exception. Catch specific exceptions.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>} catch (Exception e) {</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/auth/JwtRequestFilter.java:52</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Best Practice: Avoid catching generic Exception. Catch specific exceptions.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>} catch (Exception e) {</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/enums/Permission.java:21</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Best Practice: Avoid catching generic Exception. Catch specific exceptions.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>} catch (Exception e) {</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="HIGH" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-high">HIGH</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/repository/BookingRepository.java:31</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">High: Fragile data mapping using List<Object[]>. Use a DTO projection instead.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>List&lt;Object[]&gt; findFutureBookings();</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="HIGH" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-high">HIGH</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/repository/BookingRepository.java:53</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">High: Fragile data mapping using List<Object[]>. Use a DTO projection instead.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>List&lt;Object[]&gt; findTodayAndPastBookings();</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="MEDIUM" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-medium">MEDIUM</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/repository/BookingRepository.java:29</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Native queries bypass JPA safeguards. Verify strict necessity.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>nativeQuery = true</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="MEDIUM" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-medium">MEDIUM</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/repository/BookingRepository.java:51</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Native queries bypass JPA safeguards. Verify strict necessity.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>nativeQuery = true</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="MEDIUM" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-medium">MEDIUM</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/repository/BookingRepository.java:55</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Native queries bypass JPA safeguards. Verify strict necessity.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>@Query(value = &quot;SELECT COUNT(*) FROM bookings WHERE is_finished = &#039;Y&#039;&quot;, nativeQuery = true)</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="MEDIUM" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-medium">MEDIUM</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/repository/RoomRepository.java:23</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Native queries bypass JPA safeguards. Verify strict necessity.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>nativeQuery = true</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="HIGH" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-high">HIGH</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/repository/UserRepository.java:23</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">High: Fragile data mapping using List<Object[]>. Use a DTO projection instead.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>List&lt;Object[]&gt; findAllActiveUsers();</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="MEDIUM" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-medium">MEDIUM</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/repository/UserRepository.java:19</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Native queries bypass JPA safeguards. Verify strict necessity.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>@Query(value = &quot;SELECT count(*) FROM USERS u JOIN USER_INFORMATION uif ON u.user_id = uif.user_id WHERE uif.active_flag &lt;&gt; &#039;N&#039;&quot;, nativeQuery = true)</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="MEDIUM" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-medium">MEDIUM</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/repository/UserRepository.java:22</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Native queries bypass JPA safeguards. Verify strict necessity.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>@Query(value = &quot;SELECT u.user_id, u.user_name, uif.first_name, uif.last_name, u.user_role, uif.email_id, uif.active_flag, uif.joined_date FROM USERS u JOIN USER_INFORMATION uif ON u.user_id = uif.user_id&quot;, nativeQuery = true)</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="HIGH" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-high">HIGH</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/service/BookingService.java:55</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">High: Fragile data mapping using List<Object[]>. Use a DTO projection instead.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>List&lt;Object[]&gt; results = bookingRepository.findFutureBookings();</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="HIGH" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-high">HIGH</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/service/BookingService.java:84</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">High: Fragile data mapping using List<Object[]>. Use a DTO projection instead.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>List&lt;Object[]&gt; rows = bookingRepository.findTodayAndPastBookings();</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="HIGH" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-high">HIGH</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/service/UserService.java:54</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Security: Potential hardcoded ADMIN permission.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Collections.singleton(new SimpleGrantedAuthority(Permission.ADMIN.toString())));</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="CRITICAL" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-critical">CRITICAL</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/service/UserService.java:63</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Inconsistent Soft Delete Logic</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">deleteUser() updates User.status="Inactive", but repository count queries check UserInformation.active_flag. This mismatch causes inaccurate reporting.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Update both User.status and UserInformation.active_flag in a single Transactional method.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>user.setStatus(&quot;Inactive&quot;);</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="HIGH" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-high">HIGH</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/main/java/com/innovan/roombooking/service/UserService.java:54</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Hardcoded Permissions Breakdown</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">Granting ADMIN authority by default bypasses role-based security systems and violates the Principle of Least Privilege.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Fetch the user roles from the database and map them to GrantedAuthorities dynamically.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>Collections.singleton(new SimpleGrantedAuthority(Permission.ADMIN.toString()))</code></pre>
+        </div>
+    
+        <div class="issue-card" data-severity="LOW" data-framework="JAVA">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-low">LOW</span>
+                    <span class="framework-badge">JAVA</span>
+                    <span class="issue-file">server/src/test/java/com/innovan/roombooking/TestBCrypt.java:15</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">Quality: Remove System.out.println in production.</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">This violates common coding standards or project-specific rules.</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">Correct the highlighted code following project guidelines.</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>System.out.println(&quot;Matches? &quot; + encoder.matches(rawPassword, dbHash));</code></pre>
+        </div>
+    
+        </div>
     </div>
-    </body></html>
+
+    <script>
+        let currentFilters = { sev: 'ALL', frame: 'ALL' };
+
+        function setFilter(type, value, btn) {
+            btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilters[type] = value;
+            applyAllFilters();
+        }
+
+        function applyAllFilters() {
+            const query = document.getElementById('search').value.toLowerCase();
+            const cards = document.querySelectorAll('.issue-card');
+            
+            cards.forEach(card => {
+                const sMatch = currentFilters.sev === 'ALL' || card.dataset.severity === currentFilters.sev;
+                const fMatch = currentFilters.frame === 'ALL' || card.dataset.framework === currentFilters.frame;
+                const qMatch = card.innerText.toLowerCase().includes(query);
+
+                if (sMatch && fMatch && qMatch) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+    

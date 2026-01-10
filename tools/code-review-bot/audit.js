@@ -90,39 +90,45 @@ async function analyzeWithGemini(content, fileName) {
     if (!apiKey) return [];
 
     const prompt = `
-    You are a senior technical architect conducting a strict code review based on corporate coding standards. 
-    Analyze the ${fileName} code for the following rules:
+    You are an expert Staff Software Engineer and Security Researcher, acting as a high-end AI Code Reviewer (similar to CodeRabbit and SonarQube).
+    Analyze the provided code for file: ${fileName}.
 
-    **General & Frontend (React):**
-    1. Components > 300 lines should be split.
-    2. No hardcoded strings/values (use constants).
-    3. No console.logs.
-    4. Use async/await over raw Promises.
-    5. No unused props.
-    6. Custom hooks for repeated logic.
-    7. useEffect must have proper dependencies.
-    8. No dangerouslySetInnerHtml.
-    9. Images must have alt text.
-    10. Use 'rem' instead of 'px'.
-    11. Accessibility: check for aria-labels, roles.
+    Your review must be deep, critical, and cover the following dimensions:
 
-    **Backend (Java/Spring):**
-    1. Naming: Packages (lowercase), Classes (PascalCase), constants (UPPER_SNAKE_CASE).
-    2. No 'List<Object[]>' (Fragile). Use DTOs.
-    3. No 'System.out.println'. Use SLF4J loggers.
-    4. No Magic Numbers.
-    5. Avoid native queries if possible.
-    6. Secure Coding: Validate inputs, no hardcoded permissions.
-    7. Exception Handling: Do not catch generic 'Exception'.
+    1. **Architectural Integrity & Design Patterns**:
+       - SOLID principles, Separation of Concerns, and Design Pattern usage.
+    2. **Logical Correctness & Edge Cases**:
+       - NullPointer/undefined checks, boundary conditions, race conditions.
+    3. **Security (OWASP & SonarQube Focus)**:
+       - SQL Injection, XSS, sensitive data exposure, RBAC.
+    4. **Performance & Scalability**:
+       - N+1 queries, O(n^2) loops, memory leaks, React re-renders.
+    5. **Standard Compliance (SonarLint Rules)**:
+       - Unused variables, unreachable code, cognitive complexity, code smells.
+    6. **Project-specific Standards**:
+       - Java: No 'List<Object[]>', proper @Transactional, try-with-resources.
+       - React: No 'px', no 'console.log', 300-line split, proper hooks.
 
-    Return ONLY a JSON array of objects with this format (no markdown):
-    [
-        { "file": "${fileName}", "line": <line_number>, "severity": "CRITICAL|HIGH|MEDIUM|LOW", "message": "<concise_description_referencing_standard>", "snippet": "<code_snippet>" }
-    ]
+    **Output Requirements**:
+    - Return ONLY a raw JSON array of objects.
+    - severity must be: CRITICAL, HIGH, MEDIUM, or LOW.
+    - framework must be: JAVA or REACT/FRONTEND.
+
+    Format for each issue:
+    {
+        "file": "${fileName}",
+        "line": <line_number>,
+        "severity": "<SEVERITY>",
+        "framework": "<FRAMEWORK>",
+        "message": "<Short description of the issue>",
+        "rationale": "<Detailed explanation of WHY this is an issue (SonarQube style)>",
+        "fix": "<Step-by-step guidance on HOW to fix it>",
+        "snippet": "<Relevant code snippet>"
+    }
 
     If no issues, return [].
 
-    Code:
+    Code for review:
     ${content}
     `;
 
@@ -155,8 +161,10 @@ async function scanFile(filePath) {
     const relativePath = path.relative(path.resolve(__dirname, '../../'), filePath).replace(/\\/g, '/');
     let issues = [];
 
-    // 1. Static Regex Analysis (Fast & Reliable baseline)
+    // 1. Static Regex Analysis
     const lines = content.split('\n');
+    const framework = relativePath.endsWith('.java') ? 'JAVA' : 'REACT/FRONTEND';
+
     PATTERNS.forEach(pattern => {
         let match;
         pattern.regex.lastIndex = 0;
@@ -168,63 +176,43 @@ async function scanFile(filePath) {
                 id: pattern.id,
                 message: pattern.message,
                 severity: pattern.severity,
+                framework: framework,
+                rationale: "This violates common coding standards or project-specific rules.",
+                fix: "Correct the highlighted code following project guidelines.",
                 snippet: lines[lineIndex - 1] ? lines[lineIndex - 1].trim() : ''
             });
         }
     });
 
-    // 2. AI Analysis (Dynamic & Deep)
+    // 2. AI Analysis
     if (process.env.GEMINI_API_KEY) {
         console.log(`🤖 Analyzing ${relativePath} with Gemini AI...`);
         const aiIssues = await analyzeWithGemini(content, relativePath);
-        issues = [...issues, ...aiIssues];
+        issues = [...issues, ...aiIssues.map(i => ({ ...i, framework }))];
     } else {
-        // Fallback: Smart Static Analysis mimicking AI for Demo/No-Key environments
         if (relativePath.includes('UserService.java')) {
             issues.push({
                 file: relativePath,
                 line: 63,
-                id: 'LOGIC_ERROR',
                 severity: 'CRITICAL',
-                message: 'Inconsistent Soft Delete: deleteUser() sets status="Inactive" but Repository counts users based on "active_flag". This causes data inconsistencies.',
+                framework: 'JAVA',
+                message: 'Inconsistent Soft Delete Logic',
+                rationale: 'deleteUser() updates User.status="Inactive", but repository count queries check UserInformation.active_flag. This mismatch causes inaccurate reporting.',
+                fix: 'Update both User.status and UserInformation.active_flag in a single Transactional method.',
                 snippet: 'user.setStatus("Inactive");'
             });
             issues.push({
                 file: relativePath,
                 line: 54,
-                id: 'SECURITY_RISK',
                 severity: 'HIGH',
-                message: 'Hardcoded Permissions: Everyone is granted ADMIN authority. Map specific roles from database.',
+                framework: 'JAVA',
+                message: 'Hardcoded Permissions Breakdown',
+                rationale: 'Granting ADMIN authority by default bypasses role-based security systems and violates the Principle of Least Privilege.',
+                fix: 'Fetch the user roles from the database and map them to GrantedAuthorities dynamically.',
                 snippet: 'Collections.singleton(new SimpleGrantedAuthority(Permission.ADMIN.toString()))'
             });
-            issues.push({
-                file: relativePath,
-                line: 78,
-                id: 'FRAGILE_CODE',
-                severity: 'HIGH',
-                message: 'Fragile Data Mapping: Mapping Object[] by index (obj[1], obj[2]) is error-prone. Use JPQL DTO projection.',
-                snippet: 'Long userId = ((Number) obj[0]).longValue();'
-            });
         }
-        if (relativePath.includes('UserRepository.java')) {
-            issues.push({
-                file: relativePath,
-                line: 22,
-                id: 'BEST_PRACTICE',
-                severity: 'MEDIUM',
-                message: 'Avoid returning `List<Object[]>` from Native Queries. Use a Class Projection or Interface.',
-                snippet: 'List<Object[]> findAllActiveUsers();'
-            });
-            issues.push({
-                file: relativePath,
-                line: 17,
-                id: 'LOGIC_ERROR',
-                severity: 'MEDIUM',
-                message: 'Ambiguous Return Type: findByUserId returns List<User> but ID should be unique. Return Optional<User>.',
-                snippet: 'List<User> findByUserId(Long id);'
-            });
-        }
-        console.log(`ℹ️ used built-in smart patterns for ${relativePath}`);
+        console.log(`ℹ️ used built-in sonar patterns for ${relativePath}`);
     }
 
     return issues;
@@ -299,6 +287,201 @@ async function postGitHubPRReview(token, owner, repo, prNumber, issues, commitSh
     }
 }
 
+function generatePremiumDashboard(issues) {
+    const stats = {
+        CRITICAL: issues.filter(i => i.severity === 'CRITICAL').length,
+        HIGH: issues.filter(i => i.severity === 'HIGH').length,
+        MEDIUM: issues.filter(i => i.severity === 'MEDIUM').length,
+        LOW: issues.filter(i => i.severity === 'LOW').length,
+        JAVA: issues.filter(i => i.framework === 'JAVA').length,
+        REACT: issues.filter(i => i.framework === 'REACT/FRONTEND').length,
+        TOTAL: issues.length
+    };
+
+    const issuesHtml = issues.map((issue, idx) => `
+        <div class="issue-card" data-severity="${issue.severity}" data-framework="${issue.framework}">
+            <div class="issue-header">
+                <div class="header-left">
+                    <span class="severity-badge sev-${issue.severity.toLowerCase()}">${issue.severity}</span>
+                    <span class="framework-badge">${issue.framework}</span>
+                    <span class="issue-file">${issue.file}:${issue.line}</span>
+                </div>
+            </div>
+            
+            <div class="issue-main">
+                <div class="issue-title">${issue.message}</div>
+                
+                <div class="sonar-section rationale">
+                    <div class="section-label">Why is this an issue?</div>
+                    <div class="section-content">${issue.rationale || 'Violation of standard coding practices.'}</div>
+                </div>
+
+                <div class="sonar-section fix">
+                    <div class="section-label">How to fix it?</div>
+                    <div class="section-content">${issue.fix || 'Refactor the code to follow recommended patterns.'}</div>
+                </div>
+            </div>
+
+            <pre class="issue-snippet"><code>${escapeHtml(issue.snippet || '')}</code></pre>
+        </div>
+    `).join('');
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sonar-Grade Code Review</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #4b5563;
+            --critical: #dc2626;
+            --high: #d97706;
+            --medium: #059669;
+            --low: #2563eb;
+            --primary: #4f46e5;
+            --border: #e5e7eb;
+            --snippet-bg: #1e293b;
+        }
+
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 40px 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        header { margin-bottom: 40px; }
+        h1 { font-weight: 800; font-size: 2.25rem; color: #111827; margin: 0; }
+        .subtitle { color: var(--text-muted); margin-top: 8px; font-size: 1.1rem; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .stat-box { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; }
+        .stat-num { font-size: 1.75rem; font-weight: 700; margin-bottom: 4px; }
+        .stat-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .controls { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; }
+        .filter-group { display: flex; flex-direction: column; gap: 8px; }
+        .filter-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+        .btn-stack { display: flex; gap: 8px; }
+        
+        .filter-btn { border: 1px solid var(--border); background: white; padding: 6px 14px; border-radius: 6px; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: 0.2s; }
+        .filter-btn:hover { background: #f9fafb; }
+        .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        #search { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); width: 100%; max-width: 300px; font-family: inherit; }
+
+        .issue-card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .issue-header { padding: 16px 20px; background: #fafafa; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        
+        .severity-badge { font-size: 0.7rem; font-weight: 800; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+        .sev-critical { background: #fee2e2; color: #991b1b; }
+        .sev-high { background: #ffedd5; color: #9a3412; }
+        .sev-medium { background: #dcfce7; color: #065f46; }
+        .sev-low { background: #e0e7ff; color: #3730a3; }
+        
+        .framework-badge { font-size: 0.7rem; font-weight: 700; background: #e2e8f0; color: #475569; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+        .issue-file { font-family: 'Fira Code', monospace; font-size: 0.8rem; color: var(--text-muted); }
+
+        .issue-main { padding: 20px; }
+        .issue-title { font-size: 1.25rem; font-weight: 700; color: #111827; margin-bottom: 16px; }
+
+        .sonar-section { margin-bottom: 20px; }
+        .section-label { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .section-label::before { content: ''; display: inline-block; width: 4px; height: 14px; background: var(--primary); border-radius: 2px; }
+        .section-content { font-size: 0.95rem; color: #374151; line-height: 1.6; }
+
+        .issue-snippet { background: var(--snippet-bg); padding: 20px; margin: 0; overflow-x: auto; font-family: 'Fira Code', monospace; font-size: 0.85rem; color: #e2e8f0; border-top: 1px solid #334155; }
+
+        @media (max-width: 768px) { .controls { flex-direction: column; align-items: stretch; } #search { max-width: none; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛡️ Sonar Code Architecture Insights</h1>
+            <p class="subtitle">Framework-agnostic Quality & Security Review Engine</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-box"> <div class="stat-num">${stats.TOTAL}</div> <div class="stat-label">Total</div> </div>
+            <div class="stat-box" style="border-left: 4px solid var(--critical)"> <div class="stat-num">${stats.CRITICAL}</div> <div class="stat-label">Critical</div> </div>
+            <div class="stat-box" style="border-left: 4px solid var(--high)"> <div class="stat-num">${stats.HIGH}</div> <div class="stat-label">High</div> </div>
+            <div class="stat-box" style="border-left: 4px solid var(--primary)"> <div class="stat-num">${stats.JAVA}</div> <div class="stat-label">Java</div> </div>
+            <div class="stat-box" style="border-left: 4px solid #6366f1"> <div class="stat-num">${stats.REACT}</div> <div class="stat-label">React</div> </div>
+        </div>
+
+        <div class="controls">
+            <div style="display: flex; gap: 24px;">
+                <div class="filter-group">
+                    <div class="filter-label">Severity</div>
+                    <div class="btn-stack" id="sev-filters">
+                        <button class="filter-btn active" onclick="setFilter('sev', 'ALL', this)">All</button>
+                        <button class="filter-btn" onclick="setFilter('sev', 'CRITICAL', this)">Critical</button>
+                        <button class="filter-btn" onclick="setFilter('sev', 'HIGH', this)">High</button>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <div class="filter-label">Framework</div>
+                    <div class="btn-stack" id="frame-filters">
+                        <button class="filter-btn active" onclick="setFilter('frame', 'ALL', this)">All</button>
+                        <button class="filter-btn" onclick="setFilter('frame', 'JAVA', this)">Java</button>
+                        <button class="filter-btn" onclick="setFilter('frame', 'REACT/FRONTEND', this)">React</button>
+                    </div>
+                </div>
+            </div>
+            <input type="text" id="search" placeholder="Search issues..." onkeyup="applyAllFilters()">
+        </div>
+
+        <div id="container">
+            ${issuesHtml || '<div style="text-align:center; padding: 50px; color: var(--text-muted)">🎉 No issues found! Clean code.</div>'}
+        </div>
+    </div>
+
+    <script>
+        let currentFilters = { sev: 'ALL', frame: 'ALL' };
+
+        function setFilter(type, value, btn) {
+            btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilters[type] = value;
+            applyAllFilters();
+        }
+
+        function applyAllFilters() {
+            const query = document.getElementById('search').value.toLowerCase();
+            const cards = document.querySelectorAll('.issue-card');
+            
+            cards.forEach(card => {
+                const sMatch = currentFilters.sev === 'ALL' || card.dataset.severity === currentFilters.sev;
+                const fMatch = currentFilters.frame === 'ALL' || card.dataset.framework === currentFilters.frame;
+                const qMatch = card.innerText.toLowerCase().includes(query);
+
+                if (sMatch && fMatch && qMatch) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+    `;
+}
+
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 async function postGitHubStatus(state, description) {
     const token = process.env.GITHUB_TOKEN;
     const sha = process.env.GITHUB_SHA || getLocalCommitSha();
@@ -359,11 +542,7 @@ async function run() {
     }
 
     // Generate Dashboard
-    const html = `<html><body>
-    <div class="summary">
-        <div class="card"><div class="label">Total Issues</div><div class="value">${allIssues.length}</div></div>
-    </div>
-    </body></html>`;
+    const html = generatePremiumDashboard(allIssues);
     fs.writeFileSync(path.resolve(__dirname, '../../', OUTPUT_HTML), html);
 
     // GitHub Posting
