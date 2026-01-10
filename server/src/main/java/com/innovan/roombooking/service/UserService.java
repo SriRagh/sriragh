@@ -26,9 +26,8 @@ public class UserService implements UserDetailsService {
     private final UserInformationRepository userInformationRepository;
 
     public UserService(
-        UserRepository userRepository,
-        UserInformationRepository userInformationRepository
-    ) {
+            UserRepository userRepository,
+            UserInformationRepository userInformationRepository) {
         this.userRepository = userRepository;
         this.userInformationRepository = userInformationRepository;
     }
@@ -52,8 +51,7 @@ public class UserService implements UserDetailsService {
         userDetails.setAccountNonLocked(true);
         userDetails.setCredentialsNonExpired(true);
         userDetails.setAuthorities(
-            Collections.singleton(new SimpleGrantedAuthority(Permission.ADMIN.toString()))
-        );
+                Collections.singleton(new SimpleGrantedAuthority(Permission.ADMIN.toString())));
 
         return userDetails;
     }
@@ -64,18 +62,41 @@ public class UserService implements UserDetailsService {
 
     public boolean deleteUser(Long userId) {
         return userRepository
-            .findById(userId)
-            .map(user -> {
-                user.setStatus("Inactive");
-                user.setUpdatedDate(LocalDate.now());
-                userRepository.save(user);
-                return true;
-            })
-            .orElse(false);
+                .findById(userId)
+                .map(user -> {
+                    user.setStatus("Inactive");
+                    user.setUpdatedDate(LocalDate.now());
+                    userRepository.save(user);
+                    return true;
+                })
+                .orElse(false);
     }
 
     public List<UserDetailsDto> getAllActiveUsers() {
-        return userRepository.findAllActiveUsers().stream().toList();
+        return userRepository.findAllActiveUsers().stream()
+                .map(obj -> {
+                    Long userId = ((Number) obj[0]).longValue();
+                    String username = (String) obj[1];
+                    String firstName = (String) obj[2];
+                    String lastName = (String) obj[3];
+                    String role = (String) obj[4];
+                    String email = (String) obj[5];
+                    String isActive = (String) obj[6];
+                    java.sql.Timestamp joinedDateTs = (java.sql.Timestamp) obj[7];
+                    LocalDate joinedDate = joinedDateTs != null ? joinedDateTs.toLocalDateTime().toLocalDate() : null;
+
+                    UserDetailsDto dto = new UserDetailsDto();
+                    dto.setUserId(userId);
+                    dto.setUsername(username);
+                    dto.setFirstName(firstName);
+                    dto.setLastName(lastName);
+                    dto.setRole(role);
+                    dto.setEmail(email);
+                    dto.setIsActive(isActive);
+                    dto.setJoinedDate(joinedDate);
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     private UserDetailsDto convertToDto(User user) {

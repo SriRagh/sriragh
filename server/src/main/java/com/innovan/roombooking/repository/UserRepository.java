@@ -16,12 +16,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByUserId(Long id);
 
-    @Query("SELECT COUNT(u) FROM User u JOIN UserInformation uif ON uif.userId = u.userId WHERE uif.isActive <> 'N'")
+    @Query(value = "SELECT count(*) FROM USERS u JOIN USER_INFORMATION uif ON u.user_id = uif.user_id WHERE uif.active_flag <> 'N'", nativeQuery = true)
     Long countAllUsers();
 
-    @Query("""
-            SELECT new com.innovan.roombooking.dto.UserDetailsDto(\
-            u.userId, u.username, uif.firstName, uif.lastName, u.role, uif.emailId, uif.isActive, uif.joinedDate) \
-            FROM User u JOIN UserInformation uif ON uif.userId = u.userId\s""")
-    List<UserDetailsDto> findAllActiveUsers();
+    @Query(value = "SELECT u.user_id, u.user_name, uif.first_name, uif.last_name, u.user_role, uif.email_id, uif.active_flag, uif.joined_date FROM USERS u JOIN USER_INFORMATION uif ON u.user_id = uif.user_id", nativeQuery = true)
+    List<Object[]> findAllActiveUsers();
 }
